@@ -6,7 +6,7 @@ sql {
 		port = $ENV{DB_PORT}
 		login = "$ENV{DB_USER}"
 		password = "$ENV{DB_PASSWORD}"
-		database = "$ENV{DB_NAME}"
+		radius_db = "$ENV{DB_NAME}"
 
 		client_table = "nas"
 		group_attribute = "SQL-Group"
