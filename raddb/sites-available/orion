@@ -1,0 +1,55 @@
+# Servidor RADIUS do Orion (PPPoE: PAP, CHAP, MS-CHAP).
+server orion {
+	listen {
+		type = auth
+		ipaddr = *
+		port = 1812
+	}
+	listen {
+		type = acct
+		ipaddr = *
+		port = 1813
+	}
+
+	authorize {
+		filter_username
+		preprocess
+		chap
+		mschap
+		sql
+		# Usuário inexistente, de outro ISP, cancelado ou sem senha: rejeita.
+		if (notfound) {
+			reject
+		}
+		pap
+	}
+
+	authenticate {
+		Auth-Type PAP {
+			pap
+		}
+		Auth-Type CHAP {
+			chap
+		}
+		Auth-Type MS-CHAP {
+			mschap
+		}
+	}
+
+	preacct {
+		preprocess
+		acct_unique
+	}
+
+	accounting {
+		sql
+	}
+
+	post-auth {
+		sql
+		Post-Auth-Type REJECT {
+			sql
+			attr_filter.access_reject
+		}
+	}
+}

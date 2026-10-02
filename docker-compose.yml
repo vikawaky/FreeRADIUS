@@ -2,7 +2,7 @@ services:
   freeradius:
     build: .
     image: vikawaky/freeradius-postgresql:3.2.10
-    command: ["freeradius", "-f"]
+    command: ["freeradius", "-f", "-l", "stdout"]
     restart: unless-stopped
     ports:
       - "1812:1812/udp"

@@ -1,25 +1,38 @@
+# Conexão com o banco do FreeRADIUS (Postgres separado do Supabase).
+# As tabelas e funções do schema `orion` são criadas e mantidas pelo worker
+# radius-sync do Orion (repositório vikawaky/orion-isp, worker/radius-sync).
 sql {
-		dialect = "postgresql"
-		driver = "rlm_sql_${dialect}"
+	dialect = "postgresql"
+	driver = "rlm_sql_${dialect}"
 
-		server = "$ENV{DB_HOST}"
-		port = $ENV{DB_PORT}
-		login = "$ENV{DB_USER}"
-		password = "$ENV{DB_PASSWORD}"
-		radius_db = "$ENV{DB_NAME}"
+	postgresql {
+		send_application_name = yes
+	}
 
-		client_table = "nas"
-		group_attribute = "SQL-Group"
+	server = "$ENV{DB_HOST}"
+	port = $ENV{DB_PORT}
+	login = "$ENV{DB_USER}"
+	password = "$ENV{DB_PASSWORD}"
+	radius_db = "$ENV{DB_NAME}"
 
-		acct_table1 = "radacct"
-		acct_table2 = "radacct"
-		postauth_table = "radpostauth"
-		authcheck_table = "radcheck"
-		authreply_table = "radreply"
-		groupcheck_table = "radgroupcheck"
-		groupreply_table = "radgroupreply"
-		usergroup_table = "radusergroup"
+	# Sem grupos nem perfis: cada conta já traz a resposta completa.
+	read_groups = no
+	read_profiles = no
+	# NAS vêm de orion.clients(); NAS novo exige reiniciar o container.
+	read_clients = yes
+	client_table = "orion.nas"
+	group_attribute = "SQL-Group"
 
-		read_groups = yes
-		$INCLUDE ${modconfdir}/sql/main/${dialect}/queries.conf
+	pool {
+		start = 1
+		min = 1
+		max = 16
+		spare = 4
+		uses = 0
+		retry_delay = 5
+		lifetime = 0
+		idle_timeout = 60
+	}
+
+	$INCLUDE ${confdir}/mods-config/orion-queries.conf
 }
