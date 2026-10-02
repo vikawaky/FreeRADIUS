@@ -24,6 +24,8 @@ COPY raddb/clients.conf /etc/freeradius/clients.conf
 COPY raddb/mods-enabled/sql /etc/freeradius/mods-enabled/sql
 COPY raddb/mods-config/orion-queries.conf /etc/freeradius/mods-config/orion-queries.conf
 COPY raddb/sites-available/orion /etc/freeradius/sites-available/orion
-RUN ln -sf ../sites-available/orion /etc/freeradius/sites-enabled/orion
+COPY raddb/sites-available/dynamic-clients /etc/freeradius/sites-available/dynamic-clients
+RUN ln -sf ../sites-available/orion /etc/freeradius/sites-enabled/orion \
+ && ln -sf ../sites-available/dynamic-clients /etc/freeradius/sites-enabled/dynamic-clients
 
 EXPOSE 1812/udp 1813/udp

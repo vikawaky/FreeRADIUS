@@ -1,0 +1,19 @@
+# Descobre o NAS pela IP de origem do pacote, direto no banco (orion.nas).
+server dynamic_clients {
+	authorize {
+		if ("%{sql:SELECT secret FROM orion.nas WHERE nasname = '%{Packet-Src-IP-Address}'}") {
+			update control {
+				&FreeRADIUS-Client-IP-Address = "%{Packet-Src-IP-Address}"
+				&FreeRADIUS-Client-Shortname = "%{sql:SELECT shortname FROM orion.nas WHERE nasname = '%{Packet-Src-IP-Address}'}"
+				&FreeRADIUS-Client-Secret = "%{sql:SELECT secret FROM orion.nas WHERE nasname = '%{Packet-Src-IP-Address}'}"
+				&FreeRADIUS-Client-NAS-Type = "other"
+				&FreeRADIUS-Client-Virtual-Server = "orion"
+			}
+			ok
+		}
+		else {
+			# IP desconhecida: não vira cliente e o pacote é descartado.
+			noop
+		}
+	}
+}

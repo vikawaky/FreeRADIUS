@@ -18,8 +18,8 @@ sql {
 	# Sem grupos nem perfis: cada conta já traz a resposta completa.
 	read_groups = no
 	read_profiles = no
-	# NAS vêm de orion.clients(); NAS novo exige reiniciar o container.
-	read_clients = yes
+	# NAS: lidos sob demanda pelo servidor dynamic_clients (sem reiniciar).
+	read_clients = no
 	client_table = "orion.nas"
 	group_attribute = "SQL-Group"
 
