@@ -2,11 +2,11 @@ sql {
 		dialect = "postgresql"
 		driver = "rlm_sql_${dialect}"
 
-		server = "${ENV:DB_HOST}"
-		port = ${ENV:DB_PORT}
-		login = "${ENV:DB_USER}"
-		password = "${ENV:DB_PASSWORD}"
-		database = "${ENV:DB_NAME}"
+		server = "$ENV{DB_HOST}"
+		port = $ENV{DB_PORT}
+		login = "$ENV{DB_USER}"
+		password = "$ENV{DB_PASSWORD}"
+		database = "$ENV{DB_NAME}"
 
 		client_table = "nas"
 		group_attribute = "SQL-Group"
