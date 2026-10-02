@@ -6,6 +6,12 @@ services:
     ports:
       - "1812:1812/udp"
       - "1813:1813/udp"
+    environment:
+      DB_HOST: postre-sql-orion-cm0itg
+      DB_PORT: "5432"
+      DB_NAME: freeradius
+      DB_USER: meteora
+      DB_PASSWORD: ${DB_PASSWORD}
     networks:
       - default
       - dokploy-network
