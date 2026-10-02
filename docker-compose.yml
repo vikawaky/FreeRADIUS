@@ -8,10 +8,10 @@ services:
       - "1812:1812/udp"
       - "1813:1813/udp"
     environment:
-      DB_HOST: ${DB_HOST}
-      DB_PORT: ${DB_PORT:-5432}
-      DB_NAME: ${DB_NAME}
-      DB_USER: ${DB_USER}
+      DB_HOST: postre-sql-orion-cm0itg
+      DB_PORT: "5432"
+      DB_NAME: freeradius
+      DB_USER: meteora
       DB_PASSWORD: ${DB_PASSWORD}
     networks:
       - dokploy-network
