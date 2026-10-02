@@ -1,0 +1,26 @@
+# FreeRADIUS de PRODUÇÃO (serviço "free-radius-prod" no Dokploy, composePath
+# ./docker-compose.prod.yml). Mesma imagem/config do dev (docker-compose.yml),
+# mas com banco próprio (Postgres "freeradius-prod-db") e portas no host
+# diferentes, porque o dev já ocupa 1812/1813 na mesma VM.
+# Quando a VPN de gerência existir, o NAS chegará por 198.18.0.1 (hub de prod).
+services:
+  freeradius-prod:
+    build: .
+    image: vikawaky/freeradius-postgresql:3.2.10-prod
+    command: ["freeradius", "-f", "-l", "stdout"]
+    restart: unless-stopped
+    ports:
+      - "${RADIUS_AUTH_PORT:-1822}:1812/udp"
+      - "${RADIUS_ACCT_PORT:-1823}:1813/udp"
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: "5432"
+      DB_NAME: freeradius
+      DB_USER: freeradius
+      DB_PASSWORD: ${DB_PASSWORD}
+    networks:
+      - dokploy-network
+
+networks:
+  dokploy-network:
+    external: true
