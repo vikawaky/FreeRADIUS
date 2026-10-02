@@ -1,0 +1,22 @@
+sql {
+		dialect = "postgresql"
+		driver = "rlm_sql_${dialect}"
+
+		server = "${env:DB_HOST}"
+		port = ${env:DB_PORT}
+		login = "${env:DB_USER}"
+		password = "${env:DB_PASSWORD}"
+		database = "${env:DB_NAME}"
+
+		acct_table1 = "radacct"
+		acct_table2 = "radacct"
+		postauth_table = "radpostauth"
+		authcheck_table = "radcheck"
+		authreply_table = "radreply"
+		groupcheck_table = "radgroupcheck"
+		groupreply_table = "radgroupreply"
+		usergroup_table = "radusergroup"
+
+		read_groups = yes
+		$INCLUDE ${modconfdir}/sql/main/${dialect}/queries.conf
+}

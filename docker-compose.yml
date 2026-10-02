@@ -1,19 +1,19 @@
 services:
   freeradius:
-    image: freeradius/freeradius-server:3.2.10
+    build: .
+    image: vikawaky/freeradius-postgresql:3.2.10
     command: ["freeradius", "-f"]
     restart: unless-stopped
     ports:
       - "1812:1812/udp"
       - "1813:1813/udp"
     environment:
-      DB_HOST: postre-sql-orion-cm0itg
-      DB_PORT: "5432"
-      DB_NAME: freeradius
-      DB_USER: meteora
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
     networks:
-      - default
       - dokploy-network
 
 networks:
