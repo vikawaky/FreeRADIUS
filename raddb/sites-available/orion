@@ -12,7 +12,9 @@ server orion {
 	}
 
 	authorize {
-		filter_username
+		# Sem filter_username: a política padrão rejeita usuário com realm sem
+		# ponto ("cliente@madenet"), formato comum nos ISP (MikroWisp etc.).
+		# O usuário só é usado como parâmetro escapado nas consultas SQL.
 		preprocess
 		chap
 		mschap
