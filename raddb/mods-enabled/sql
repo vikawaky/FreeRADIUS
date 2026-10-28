@@ -23,9 +23,12 @@ sql {
 	client_table = "orion.nas"
 	group_attribute = "SQL-Group"
 
+	# start = 0: não abre conexão ao iniciar. Com o banco fora (ex.: corrompido),
+	# o FreeRADIUS sobe mesmo assim e conecta quando o banco voltar, em vez de
+	# morrer no arranque ("Instantiation failed for module sql") em loop.
 	pool {
-		start = 1
-		min = 1
+		start = 0
+		min = 0
 		max = 16
 		spare = 4
 		uses = 0
