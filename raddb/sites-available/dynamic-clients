@@ -1,4 +1,12 @@
 # Descobre o NAS pela IP de origem do pacote, direto no banco (orion.nas).
+#
+# Respaldo pela IP pública (Orion: /radius "orion-publico" no MikroTik): sem a VPN, o pacote
+# chega com a IP pública do equipo (masquerade na WAN) e o NAS-IP-Address continua sendo a IP
+# do túnel (src-address da entrada). Aqui os atributos do pacote ainda não estão decodificados
+# (sem cliente não há segredo): o cliente vale para a IP pública que o hub viu para algum NAS
+# (orion.nas.publica, mantida pelo radius-sync), com o segredo deles se for um só. Vários NAS
+# atrás da mesma IP pública com segredos diferentes ficam sem respaldo (fallback local).
+# O server orion confere depois que o NAS-IP-Address é um NAS com essa IP pública.
 server dynamic_clients {
 	authorize {
 		if ("%{sql:SELECT secret FROM orion.nas WHERE nasname = '%{Packet-Src-IP-Address}'}") {
@@ -6,6 +14,16 @@ server dynamic_clients {
 				&FreeRADIUS-Client-IP-Address = "%{Packet-Src-IP-Address}"
 				&FreeRADIUS-Client-Shortname = "%{sql:SELECT shortname FROM orion.nas WHERE nasname = '%{Packet-Src-IP-Address}'}"
 				&FreeRADIUS-Client-Secret = "%{sql:SELECT secret FROM orion.nas WHERE nasname = '%{Packet-Src-IP-Address}'}"
+				&FreeRADIUS-Client-NAS-Type = "other"
+				&FreeRADIUS-Client-Virtual-Server = "orion"
+			}
+			ok
+		}
+		elsif ("%{sql:SELECT max(secret) FROM orion.nas WHERE publica = '%{Packet-Src-IP-Address}' HAVING count(DISTINCT secret) = 1}") {
+			update control {
+				&FreeRADIUS-Client-IP-Address = "%{Packet-Src-IP-Address}"
+				&FreeRADIUS-Client-Shortname = "publica-%{Packet-Src-IP-Address}"
+				&FreeRADIUS-Client-Secret = "%{sql:SELECT max(secret) FROM orion.nas WHERE publica = '%{Packet-Src-IP-Address}' HAVING count(DISTINCT secret) = 1}"
 				&FreeRADIUS-Client-NAS-Type = "other"
 				&FreeRADIUS-Client-Virtual-Server = "orion"
 			}

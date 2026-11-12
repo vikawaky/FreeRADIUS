@@ -12,6 +12,21 @@ server orion {
 	}
 
 	authorize {
+		# NAS efetivo: a IP de origem (túnel) ou, pelo respaldo da IP pública, o NAS-IP-Address
+		# (IP do túnel) desde que a IP pública seja a desse NAS. As consultas usam Tmp-String-6.
+		if ("%{sql:SELECT 1 FROM orion.nas WHERE nasname = '%{Packet-Src-IP-Address}'}" == "1") {
+			update request {
+				&Tmp-String-6 := "%{Packet-Src-IP-Address}"
+			}
+		}
+		elsif (&NAS-IP-Address && "%{sql:SELECT 1 FROM orion.nas WHERE nasname = '%{NAS-IP-Address}' AND publica = '%{Packet-Src-IP-Address}'}" == "1") {
+			update request {
+				&Tmp-String-6 := "%{NAS-IP-Address}"
+			}
+		}
+		else {
+			reject
+		}
 		# Sem filter_username: a política padrão rejeita usuário com realm sem
 		# ponto ("cliente@madenet"), formato comum nos ISP (MikroWisp etc.).
 		# O usuário só é usado como parâmetro escapado nas consultas SQL.
@@ -39,6 +54,18 @@ server orion {
 	}
 
 	preacct {
+		# NAS efetivo: a IP de origem (túnel) ou, pelo respaldo da IP pública, o NAS-IP-Address
+		# (IP do túnel) desde que a IP pública seja a desse NAS. As consultas usam Tmp-String-6.
+		if ("%{sql:SELECT 1 FROM orion.nas WHERE nasname = '%{Packet-Src-IP-Address}'}" == "1") {
+			update request {
+				&Tmp-String-6 := "%{Packet-Src-IP-Address}"
+			}
+		}
+		elsif (&NAS-IP-Address && "%{sql:SELECT 1 FROM orion.nas WHERE nasname = '%{NAS-IP-Address}' AND publica = '%{Packet-Src-IP-Address}'}" == "1") {
+			update request {
+				&Tmp-String-6 := "%{NAS-IP-Address}"
+			}
+		}
 		preprocess
 		acct_unique
 	}
