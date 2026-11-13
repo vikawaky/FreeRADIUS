@@ -1,4 +1,4 @@
-# Servidor RADIUS do Orion (PPPoE: PAP, CHAP, MS-CHAP).
+# Servidor RADIUS do Orion (PPPoE: PAP, CHAP, MS-CHAP; IPoE: MAC do cliente no pedido do DHCP).
 server orion {
 	listen {
 		type = auth
@@ -26,6 +26,18 @@ server orion {
 		}
 		else {
 			reject
+		}
+		# IPoE: pedido do servidor DHCP do MikroTik (use-radius). Chega com User-Name = MAC do
+		# cliente e senha vazia, sem PPP, sem Service-Type e sem CHAP/MS-CHAP/EAP. Só um pedido
+		# assim pode usar a conta IPoE da MAC (que não tem senha): as consultas recebem
+		# Tmp-String-5 = "ipoe". Qualquer outro pedido (PPPoE, login, hotspot, wireless) com uma
+		# MAC como usuário continua valendo só para contas PPPoE, com senha.
+		if (!&Framed-Protocol && !&Service-Type && !&CHAP-Password && !&MS-CHAP-Challenge && !&EAP-Message \
+		    && (!&User-Password || (&User-Password == "")) \
+		    && (&User-Name =~ /^[0-9A-Fa-f]{2}([:.-]?[0-9A-Fa-f]{2}){5}$/)) {
+			update request {
+				&Tmp-String-5 := "ipoe"
+			}
 		}
 		# Sem filter_username: a política padrão rejeita usuário com realm sem
 		# ponto ("cliente@madenet"), formato comum nos ISP (MikroWisp etc.).
