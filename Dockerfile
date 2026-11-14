@@ -1,4 +1,4 @@
-# FreeRADIUS do Orion (PPPoE: PAP, CHAP, MS-CHAP) com Postgres.
+# FreeRADIUS do Orion (PPPoE: PAP, CHAP, MS-CHAP; IPoE pela MAC no pedido do DHCP) com Postgres.
 # Contas, NAS e accounting ficam no schema `orion` do banco do FreeRADIUS,
 # alimentado pelo worker radius-sync do Orion. Multi-ISP: o NAS (IP de origem
 # do pacote) define de qual ISP é cada requisição.
