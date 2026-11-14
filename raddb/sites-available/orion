@@ -27,12 +27,17 @@ server orion {
 		else {
 			reject
 		}
-		# IPoE: pedido do servidor DHCP do MikroTik (use-radius). Chega com User-Name = MAC do
-		# cliente e senha vazia, sem PPP, sem Service-Type e sem CHAP/MS-CHAP/EAP. Só um pedido
-		# assim pode usar a conta IPoE da MAC (que não tem senha): as consultas recebem
-		# Tmp-String-5 = "ipoe". Qualquer outro pedido (PPPoE, login, hotspot, wireless) com uma
-		# MAC como usuário continua valendo só para contas PPPoE, com senha.
-		if (!&Framed-Protocol && !&Service-Type && !&CHAP-Password && !&MS-CHAP-Challenge && !&EAP-Message \
+		# IPoE: pedido do servidor DHCP do MikroTik (use-radius). Visto num RouterOS 7.23.7 real
+		# (14/11/2026): User-Name = MAC do cliente (maiúsculas, com ":"), User-Password vazia,
+		# Service-Type = Framed-User, NAS-Port-Type = Ethernet, Called-Station-Id = nome do servidor
+		# DHCP, Calling-Station-Id = client-id; sem Framed-Protocol e sem CHAP/MS-CHAP/EAP. Só um
+		# pedido assim pode usar a conta IPoE da MAC (que não tem senha): as consultas recebem
+		# Tmp-String-5 = "ipoe". O PPPoE sempre traz Framed-Protocol = PPP; login, hotspot e
+		# wireless trazem outro Service-Type ou outro NAS-Port-Type. Qualquer um desses com uma MAC
+		# como usuário continua valendo só para contas PPPoE, com senha.
+		if (!&Framed-Protocol && (!&Service-Type || (&Service-Type == Framed-User)) \
+		    && (!&NAS-Port-Type || (&NAS-Port-Type == Ethernet)) \
+		    && !&CHAP-Password && !&MS-CHAP-Challenge && !&EAP-Message \
 		    && (!&User-Password || (&User-Password == "")) \
 		    && (&User-Name =~ /^[0-9A-Fa-f]{2}([:.-]?[0-9A-Fa-f]{2}){5}$/)) {
 			update request {

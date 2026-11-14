@@ -99,7 +99,9 @@ caso() {
 }
 
 PPP=('Service-Type = Framed-User' 'Framed-Protocol = PPP' 'NAS-Port-Type = Ethernet')
-DHCP=('NAS-Identifier = "mk"' 'NAS-Port-Type = Ethernet' 'Called-Station-Id = "dhcp-clientes"')
+# Pedido do servidor DHCP como um RouterOS 7.23.7 real manda (Service-Type = Framed-User, sem PPP).
+DHCP=('NAS-Identifier = "mk"' 'NAS-Port-Type = Ethernet' 'Service-Type = Framed-User' 'NAS-Port-Id = "ether5"' 'Calling-Station-Id = "1:aa:bb:cc:0:11:22"' 'Called-Station-Id = "dhcp-clientes"')
+DHCP_SEM_ST=('NAS-Identifier = "mk"' 'NAS-Port-Type = Ethernet' 'Called-Station-Id = "dhcp-clientes"')
 
 caso "PPPoE PAP com a senha certa"             auth 'Access-Accept|Mikrotik-Rate-Limit = "10M/10M"|Framed-Pool = "pool-pppoe"' 'User-Name = "cliente1"' 'User-Password = "senha1"' "${PPP[@]}"
 caso "PPPoE PAP com a senha errada"            auth 'Access-Reject' 'User-Name = "cliente1"' 'User-Password = "errada"' "${PPP[@]}"
@@ -108,6 +110,8 @@ caso "PPPoE usuário inexistente"               auth 'Access-Reject' 'User-Name 
 caso "IPoE: pedido do DHCP com MAC conhecida"  auth 'Access-Accept|Session-Timeout = 1800|Framed-IP-Address = 10.20.0.50|Mikrotik-Rate-Limit = "20M/20M"|!Framed-Pool|!Mikrotik-Group' 'User-Name = "AA:BB:CC:00:11:22"' 'User-Password = ""' "${DHCP[@]}"
 caso "IPoE: MAC em outro formato"              auth 'Access-Accept|Framed-IP-Address = 10.20.0.50' 'User-Name = "aa-bb-cc-00-11-22"' 'User-Password = ""' "${DHCP[@]}"
 caso "IPoE: MAC sem atributo de senha"         auth 'Access-Accept' 'User-Name = "AA:BB:CC:00:11:22"' "${DHCP[@]}"
+caso "IPoE: pedido sem Service-Type"           auth 'Access-Accept|Framed-IP-Address = 10.20.0.50' 'User-Name = "AA:BB:CC:00:11:22"' 'User-Password = ""' "${DHCP_SEM_ST[@]}"
+caso "MAC IPoE num pedido wireless"            auth 'Access-Reject' 'User-Name = "AA:BB:CC:00:11:22"' 'User-Password = ""' 'NAS-Port-Type = Wireless-802.11'
 caso "IPoE: MAC desconhecida"                  auth 'Access-Reject' 'User-Name = "AA:BB:CC:00:11:99"' 'User-Password = ""' "${DHCP[@]}"
 caso "IPoE: MAC de outro ISP"                  auth 'Access-Reject' 'User-Name = "AA:BB:CC:00:11:77"' 'User-Password = ""' "${DHCP[@]}"
 caso "MAC IPoE num pedido PPPoE (senha vazia)" auth 'Access-Reject' 'User-Name = "AA:BB:CC:00:11:22"' 'User-Password = ""' "${PPP[@]}"
@@ -122,7 +126,7 @@ caso "Accounting de uma sessão PPPoE"          acct 'Accounting-Response' 'Acct
 confere() { N=$((N + 1)); if [ "$(SQL -c "$2")" = "$3" ]; then echo "ok   $1"; else FALHAS=$((FALHAS + 1)); echo "FALHA $1: $(SQL -c "$2")"; fi; }
 confere "sessão IPoE ligada à conexão da MAC"   "SELECT connection_id FROM orion.sessions WHERE username = 'AA:BB:CC:00:11:22'" "00000000-0000-0000-0000-000000000002"
 confere "sessão PPPoE ligada à conexão"         "SELECT connection_id FROM orion.sessions WHERE username = 'cliente1'" "00000000-0000-0000-0000-000000000001"
-confere "log: aceites da MAC ligados à conexão" "SELECT count(*) FROM orion.auth_log WHERE resultado = 'Access-Accept' AND connection_id = '00000000-0000-0000-0000-000000000002'" "3"
+confere "log: aceites da MAC ligados à conexão" "SELECT count(*) FROM orion.auth_log WHERE resultado = 'Access-Accept' AND connection_id = '00000000-0000-0000-0000-000000000002'" "4"
 confere "log: recusas registradas"              "SELECT count(*) > 0 FROM orion.auth_log WHERE resultado = 'Access-Reject'" "t"
 
 if [ $FALHAS -gt 0 ]; then echo "FALHOU: $FALHAS de $N casos"; tail -5 "$T/radius.log"; exit 1; fi
