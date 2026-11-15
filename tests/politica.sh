@@ -129,5 +129,37 @@ confere "sessão PPPoE ligada à conexão"         "SELECT connection_id FROM or
 confere "log: aceites da MAC ligados à conexão" "SELECT count(*) FROM orion.auth_log WHERE resultado = 'Access-Accept' AND connection_id = '00000000-0000-0000-0000-000000000002'" "4"
 confere "log: recusas registradas"              "SELECT count(*) > 0 FROM orion.auth_log WHERE resultado = 'Access-Reject'" "t"
 
+
+# ---- Ciclo de vida das sessões (orion.accounting de 18 parâmetros) com pacotes reais ----
+# Accounting-On sem reinício: a sessão fica suspeita, não fecha; o Interim seguinte a confirma.
+SQL -c "UPDATE orion.sessions SET start_time = start_time - interval '1 hour', last_update = last_update - interval '1 hour'" >/dev/null
+caso "Accounting-On do NAS"                     acct 'Accounting-Response' 'Acct-Status-Type = Accounting-On' 'NAS-Identifier = "mk"'
+confere "Accounting-On não fecha as sessões"    "SELECT count(*) FILTER (WHERE state = 'active'), count(*) FILTER (WHERE sospecha_desde IS NOT NULL) FROM orion.sessions" "2|2"
+confere "evento registrado com o caminho"       "SELECT tipo, via, packet_src, sesiones FROM orion.acct_eventos ORDER BY id DESC LIMIT 1" "accounting_on|tunel|127.0.0.1|2"
+caso "Interim da sessão PPPoE depois do On"     acct 'Accounting-Response' 'Acct-Status-Type = Interim-Update' 'Acct-Session-Id = "p1"' 'User-Name = "cliente1"' 'Acct-Session-Time = 3900' 'Acct-Input-Octets = 1000' 'Acct-Output-Octets = 2000' "${PPP[@]}"
+confere "sessão confirmada viva"                "SELECT state, sospecha_desde IS NULL, input_octets FROM orion.sessions WHERE username = 'cliente1'" "active|t|1000"
+# A que ficou calada fecha pela varredura, na hora do evento, como reinício.
+SQL -c "UPDATE orion.sessions SET sospecha_desde = sospecha_desde - interval '13 minutes' WHERE sospecha_desde IS NOT NULL" >/dev/null
+confere "varredura fecha só a calada"           "SELECT reinicio FROM orion.sessions_barrer(2000, 12)" "1"
+confere "calada fechada como NAS-Reboot"        "SELECT state, terminate_cause FROM orion.sessions WHERE username = 'AA:BB:CC:00:11:22'" "closed|NAS-Reboot"
+# Fechamento inferido desmentido: o NAS segue mandando Interim com o tempo de sessão contínuo.
+SQL -c "UPDATE orion.sessions SET state = 'closed', stop_time = now() - interval '10 minutes', terminate_cause = 'NAS-Reboot' WHERE username = 'cliente1'" >/dev/null
+caso "Interim atrasado (tempo menor que o do fechamento)" acct 'Accounting-Response' 'Acct-Status-Type = Interim-Update' 'Acct-Session-Id = "p1"' 'User-Name = "cliente1"' 'Acct-Session-Time = 3000' 'Acct-Delay-Time = 900' "${PPP[@]}"
+confere "atrasado não reabre"                   "SELECT state FROM orion.sessions WHERE username = 'cliente1'" "closed"
+caso "Interim com continuidade"                 acct 'Accounting-Response' 'Acct-Status-Type = Interim-Update' 'Acct-Session-Id = "p1"' 'User-Name = "cliente1"' 'Acct-Session-Time = 3660' 'Acct-Input-Octets = 5000' "${PPP[@]}"
+confere "sessão reaberta com prova"             "SELECT state, stop_time IS NULL, reaperturas, input_octets FROM orion.sessions WHERE username = 'cliente1'" "active|t|1|5000"
+caso "Stop da sessão"                           acct 'Accounting-Response' 'Acct-Status-Type = Stop' 'Acct-Session-Id = "p1"' 'User-Name = "cliente1"' 'Acct-Session-Time = 3700' 'Acct-Terminate-Cause = User-Request' "${PPP[@]}"
+caso "Interim depois do Stop"                   acct 'Accounting-Response' 'Acct-Status-Type = Interim-Update' 'Acct-Session-Id = "p1"' 'User-Name = "cliente1"' 'Acct-Session-Time = 3800' "${PPP[@]}"
+confere "Stop é definitivo"                     "SELECT state, terminate_cause, stop_recibido FROM orion.sessions WHERE username = 'cliente1'" "closed|User-Request|t"
+caso "Accounting-Off do NAS"                    acct 'Accounting-Response' 'Acct-Status-Type = Accounting-Off' 'NAS-Identifier = "mk"'
+confere "eventos do ciclo"                      "SELECT string_agg(tipo, ',' ORDER BY id) FROM orion.acct_eventos" "accounting_on,reapertura,accounting_off"
+
+# ---- Rejeições agregadas por categoria ----
+confere "rejeições por categoria"               "SELECT string_agg(categoria || '=' || n, ' ' ORDER BY categoria) FROM (SELECT categoria, sum(intentos) n FROM orion.rechazos GROUP BY 1) x" "credencial_incorrecta=2 mac_desconocida=2 politica=5 usuario_inexistente=1"
+SQL -c "INSERT INTO orion.config (clave, valor) VALUES ('rechazos_muestra_hora', '2')" >/dev/null
+ANTES="$(SQL -c "SELECT count(*) FROM orion.auth_log WHERE resultado = 'Access-Reject'")"
+for _ in 1 2 3 4 5; do caso "loop com usuário inexistente" auth 'Access-Reject' 'User-Name = "fantasma"' 'User-Password = "x"' "${PPP[@]}"; done
+confere "amostragem: 5 contadas, 2 detalhadas"  "SELECT intentos, sin_detalle, (SELECT count(*) FROM orion.auth_log WHERE resultado = 'Access-Reject') - $ANTES FROM orion.rechazos WHERE username_key = 'fantasma'" "5|3|2"
+
 if [ $FALHAS -gt 0 ]; then echo "FALHOU: $FALHAS de $N casos"; tail -5 "$T/radius.log"; exit 1; fi
 echo "OK: $N casos"
